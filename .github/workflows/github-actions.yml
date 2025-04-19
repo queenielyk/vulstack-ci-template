@@ -47,21 +47,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: OWASP Dependency Check
-      uses: actions/dependency-check@v4
+    - name: Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      id: Depcheck
       with:
         project: 'vulstack-ci-template'
-        scan_type: 'All'
-        fail_on_severity: 'MEDIUM'
-        report_format: 'HTML'
-        output_directory: 'dependency-check-report'
-
-    - name: Upload Dependency Check Report
-      uses: actions/upload-artifact@v4
+        path: '.'
+        format: 'HTML'
+        out: 'reports' # this is the default, no need to specify unless you wish to override it
+        args: >
+          --failOnCVSS 7
+          --enableRetired
+    - name: Upload Test results
+      uses: actions/upload-artifact@master
       with:
-        name: dependency-check-report
-        path: dependency-check-report
-
+          name: Depcheck report
+          path: ${{github.workspace}}/reports
   sast:
     needs: build
     runs-on: ubuntu-latest
