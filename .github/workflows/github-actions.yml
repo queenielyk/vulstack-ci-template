@@ -85,12 +85,10 @@ jobs:
         echo "Flask server started in the background"
         sleep 5 # Give the server a moment to start
 
-    - name: Run OWASP ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.7.0
+    - name: ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.14.0
       with:
         target: 'http://localhost:5000'
-        rules_file: '.zap_rules.tsv' # Optional: Define specific rules
-        docker_name: 'owasp/zap-baseline'
 
     - name: Stop Flask Server
       run: pkill -f "python app.py"
