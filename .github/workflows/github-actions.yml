@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [ "main" ]
 
-permissions:
-  issues: write
+# permissions:
+#   issues: write
 
 jobs:
   build:
@@ -41,6 +41,26 @@ jobs:
         sleep 5             # Give it a moment to start
         python -c "import sqlite3; conn = sqlite3.connect('users.db'); conn.close()" # Just to trigger database creation
         pkill -f "python app.py" # Stop the background app
+
+  sca:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: OWASP Dependency Check
+      uses: actions/dependency-check@v4
+      with:
+        project: 'vulstack-ci-template'
+        scan_type: 'All'
+        fail_on_severity: 'MEDIUM'
+        report_format: 'HTML'
+        output_directory: 'dependency-check-report'
+
+    - name: Upload Dependency Check Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-report
+        path: dependency-check-report
 
   sast:
     needs: build
