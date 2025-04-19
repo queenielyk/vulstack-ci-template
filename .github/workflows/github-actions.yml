@@ -1,0 +1,98 @@
+name: Security Checks CI/CD
+
+on:
+  push:
+    branches: [ "pipeline_scan" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js for Frontend
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16' # Or the version your Next.js v12 project used
+
+    - name: Navigate to Frontend and Install Dependencies
+      run: |
+        cd frontend
+        npm install
+
+    - name: Set up Python for Backend
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Navigate to Backend and Install Dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+    - name: Create SQLite Database
+      run: |
+        cd backend
+        python app.py &  # Run the Flask app in the background to initialize the database
+        sleep 5             # Give it a moment to start
+        python -c "import sqlite3; conn = sqlite3.connect('users.db'); conn.close()" # Just to trigger database creation
+        pkill -f "python app.py" # Stop the background app
+
+  sast:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run SAST on Frontend (Example with eslint security plugin)
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    - name: Navigate to Frontend and Install Dependencies
+      run: |
+        cd frontend
+        npm install eslint eslint-plugin-security --save-dev
+        echo '{ "extends": ["eslint:recommended", "plugin:security/recommended"] }' > .eslintrc.json
+    - name: Run ESLint with Security Plugin
+      run: |
+        cd frontend
+        npx eslint .
+
+      # You can replace the above with other SAST tools like SonarQube, Snyk, etc.
+      # The configuration and execution will vary depending on the tool.
+
+  dast:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python for Backend
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Navigate to Backend and Install Dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+
+    - name: Run Flask Development Server in Background
+      run: |
+        cd backend
+        python app.py &
+        echo "Flask server started in the background"
+        sleep 5 # Give the server a moment to start
+
+    - name: Run DAST Scan (Example with OWASP ZAP)
+      uses: zaproxy/action-baseline@v0.7.0
+      with:
+        target: 'http://localhost:5000'
+        rules_file: '.zap_rules.tsv' # Optional: Define specific rules
+
+    - name: Stop Flask Server
+      run: pkill -f "python app.py"
+
+# You would also typically have a 'test' stage for unit and integration tests here.
+# And a 'deploy' stage to deploy the application if all checks pass.
